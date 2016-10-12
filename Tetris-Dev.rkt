@@ -1360,6 +1360,7 @@
        (make-block 70 370 "green")
        (make-block 70 390 "green"))
  4))
+#|
 (check-expect (block+image (make-block 10 10 "red")) .)
 (check-expect (block+image (make-block 1000 1000 "red")) .)
 (check-expect (draw-pile (make-world (make-tetra (make-posn 90 190)
@@ -1404,4 +1405,4 @@
                                                       (make-block 0 0 "blue")
                                                       (make-block 1 0 "blue")
                                                       (make-block 2 0 "blue")))
-                                    '() 0)) .)
+                                    '() 0)) .)|#
