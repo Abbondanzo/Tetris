@@ -1,3 +1,8 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Tetris
+;; by Peter Abbondanzo and Evan White
+
+
 (require 2htdp/image)
 (require 2htdp/universe)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -26,14 +31,15 @@
  
 ;; A World is a (make-world Tetra BSet Score)
 ;; The BSet represents the pile of blocks at the bottom of the screen.
-;; The Score represents the number of blocks that become part of Bset
+;; The Score represents the number of blocks that have been placed on the grid.
 (define-struct world (tetra pile score))
 
 ;; A Key-Event is one of:
-;; - "left"
-;; - "right"
-;; - "s"
-;; - "a"
+;; - "left" (moves Tetra left)
+;; - "right" (moves Tetra right)
+;; - "s" (rotates Tetra clockwise)
+;; - "a" (rotates Tetra counterclockwise)
+;; - "down" (accelerates movement of the World)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tetras
@@ -86,6 +92,7 @@
 ;; Collision
 
 ;;; touch-bottom? : Tetra -> Boolean
+;;; Checks if Tetra is in contact with the floor.
 (define (touch-bottom? tetra)
   (cond [(empty? (tetra-blocks tetra)) #false]
         [else (or (> (+ (posn-y (tetra-center tetra))
@@ -95,6 +102,8 @@
                                              (rest (tetra-blocks tetra)))))]))
 
 ;;; block-here? : World -> Boolean
+;;; Consumes World and checks for other block collision between current and
+;;;future positions.
 (define (block-here? w)
   (cond [(empty? (tetra-blocks (world-tetra w))) #false]
         [else (or (block-parse (first (tetra-blocks (world-tetra w)))
@@ -108,6 +117,7 @@
                                             (world-pile w) (world-score w))))]))
 
 ;;; block-parse : Block Bset Number Number -> Boolean
+;;; Checks each block in the current Tetra with every block in the World Bset
 (define (block-parse block bset offset-x offset-y)
   (cond [(empty? bset) #false]
         [else (or (and (= (+ offset-x (* BLOCKSIZE (block-x block)))
@@ -193,7 +203,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; World
 ;;; next-world : World -> World
-;;; Progresses world state from given (or lack of) user input
+;;; Progresses world state from given (or lack of) user input.
 (define (next-world w)
   (cond [(block-here? w) (make-world (num-tetra (random 7))
                                      (append (world-pile w) (modify-pile w))
@@ -212,6 +222,9 @@
                                       (tetra-blocks (world-tetra w)))
                           (world-pile w)
                           (world-score w))]))
+
+;;; shift-tetra-down : World -> World
+;;; Shifts Tetra down one grid space.
 
 ;;; full-row? : Number World -> Boolean
 ;;; Consumes world and checks every row if it is full
@@ -293,9 +306,19 @@
 (define (key-handler w a-key)
   (cond [(key=? a-key "left") (key-collision w a-key)]
         [(key=? a-key "right") (key-collision w a-key)]
-        [(key=? a-key "s") (rotate-collision w)]
-        [(key=? a-key "a") (rotate-collision (rotate-collision
-                                              (rotate-collision w)))]
+        [(and (key=? a-key "s")
+              (not (string=? (block-color (first
+                                           (tetra-blocks O)))
+                             (block-color (first
+                                           (tetra-blocks (world-tetra w)))))))
+         (rotate-collision w)]
+        [(and (key=? a-key "a")
+              (not (string=? (block-color (first
+                                           (tetra-blocks O)))
+                             (block-color (first
+                                           (tetra-blocks (world-tetra w)))))))
+         (rotate-collision (rotate-collision (rotate-collision w)))]
+        [(key=? a-key "down") (next-world w)]
         [else w]))
 
 ;;; rotate-collision : World -> World
@@ -367,6 +390,7 @@
                (draw-pile w)))
 
 ;;; draw-pile : World -> Image
+;;; Takes a World and draws each component of the world
 (define (draw-pile w)
   (cond [(empty? (world-pile w)) (draw-tetra (world-tetra w))]
         [else (place-image (block+image (first (world-pile w)))
@@ -411,7 +435,7 @@
                                                                 EMPTYWORLD)))
    
 (big-bang (make-world (num-tetra (random 7)) '() 0)
-     (on-tick next-world 0.2)
+     (on-tick next-world 0.4)
      (on-key key-handler)
      (to-draw draw-world)
      (stop-when check-overflow end-game))
@@ -1055,9 +1079,61 @@
   (make-posn 90 150)
   (list
    (make-block 0 0 "green")
-   (make-block 1 0 "green")
-   (make-block 1 -1 "green")
-   (make-block 0 -1 "green")))
+   (make-block 0 -1 "green")
+   (make-block -1 -1 "green")
+   (make-block -1 0 "green")))
+ (list
+  (make-block 10 370 "cyan")
+  (make-block 10 390 "cyan")
+  (make-block 30 390 "cyan")
+  (make-block 50 390 "cyan")
+  (make-block 50 370 "pink")
+  (make-block 70 370 "pink")
+  (make-block 70 390 "pink")
+  (make-block 90 390 "pink")
+  (make-block 110 370 "cyan")
+  (make-block 110 390 "cyan")
+  (make-block 130 390 "cyan")
+  (make-block 150 390 "cyan")
+  (make-block 170 350 "blue")
+  (make-block 190 350 "blue")
+  (make-block 190 370 "blue")
+  (make-block 190 390 "blue"))
+ 16))
+(check-expect (key-handler (make-world
+ (make-tetra
+  (make-posn 90 150)
+  (list
+   (make-block -1 0 "blue")
+   (make-block 0 0 "blue")
+   (make-block 1 0 "blue")
+   (make-block 2 0 "blue")))
+ (list
+  (make-block 10 370 "cyan")
+  (make-block 10 390 "cyan")
+  (make-block 30 390 "cyan")
+  (make-block 50 390 "cyan")
+  (make-block 50 370 "pink")
+  (make-block 70 370 "pink")
+  (make-block 70 390 "pink")
+  (make-block 90 390 "pink")
+  (make-block 110 370 "cyan")
+  (make-block 110 390 "cyan")
+  (make-block 130 390 "cyan")
+  (make-block 150 390 "cyan")
+  (make-block 170 350 "blue")
+  (make-block 190 350 "blue")
+  (make-block 190 370 "blue")
+  (make-block 190 390 "blue"))
+ 16) "s")
+(make-world
+ (make-tetra
+  (make-posn 90 150)
+  (list
+   (make-block 0 -1 "blue")
+   (make-block 0 0 "blue")
+   (make-block 0 1 "blue")
+   (make-block 0 2 "blue")))
  (list
   (make-block 10 370 "cyan")
   (make-block 10 390 "cyan")
@@ -1107,9 +1183,9 @@
   (make-posn 90 150)
   (list
    (make-block 0 0 "green")
-   (make-block -1 0 "green")
-   (make-block -1 1 "green")
-   (make-block 0 1 "green")))
+   (make-block 0 -1 "green")
+   (make-block -1 -1 "green")
+   (make-block -1 0 "green")))
  (list
   (make-block 10 370 "cyan")
   (make-block 10 390 "cyan")
@@ -1128,6 +1204,90 @@
   (make-block 190 370 "blue")
   (make-block 190 390 "blue"))
  16))
+(check-expect (key-handler (make-world
+ (make-tetra
+  (make-posn 90 150)
+  (list
+   (make-block -1 0 "blue")
+   (make-block 0 0 "blue")
+   (make-block 1 0 "blue")
+   (make-block 2 0 "blue")))
+ (list
+  (make-block 10 370 "cyan")
+  (make-block 10 390 "cyan")
+  (make-block 30 390 "cyan")
+  (make-block 50 390 "cyan")
+  (make-block 50 370 "pink")
+  (make-block 70 370 "pink")
+  (make-block 70 390 "pink")
+  (make-block 90 390 "pink")
+  (make-block 110 370 "cyan")
+  (make-block 110 390 "cyan")
+  (make-block 130 390 "cyan")
+  (make-block 150 390 "cyan")
+  (make-block 170 350 "blue")
+  (make-block 190 350 "blue")
+  (make-block 190 370 "blue")
+  (make-block 190 390 "blue"))
+ 16) "a")
+(make-world
+ (make-tetra
+  (make-posn 90 150)
+  (list
+   (make-block 0 1 "blue")
+   (make-block 0 0 "blue")
+   (make-block 0 -1 "blue")
+   (make-block 0 -2 "blue")))
+ (list
+  (make-block 10 370 "cyan")
+  (make-block 10 390 "cyan")
+  (make-block 30 390 "cyan")
+  (make-block 50 390 "cyan")
+  (make-block 50 370 "pink")
+  (make-block 70 370 "pink")
+  (make-block 70 390 "pink")
+  (make-block 90 390 "pink")
+  (make-block 110 370 "cyan")
+  (make-block 110 390 "cyan")
+  (make-block 130 390 "cyan")
+  (make-block 150 390 "cyan")
+  (make-block 170 350 "blue")
+  (make-block 190 350 "blue")
+  (make-block 190 370 "blue")
+  (make-block 190 390 "blue"))
+ 16))
+(check-expect (key-handler (make-world (make-tetra (make-posn 90 170)
+                                                 (list (make-block -1 0 "blue")
+                                                       (make-block 0 0 "blue")
+                                                       (make-block 1 0 "blue")
+                                                       (make-block 2 0 "blue")))
+                                      '() 0) "down")
+              (make-world (make-tetra (make-posn 90 190)
+                                                 (list (make-block -1 0 "blue")
+                                                       (make-block 0 0 "blue")
+                                                       (make-block 1 0 "blue")
+                                                       (make-block 2 0 "blue")))
+                                      '() 0))
+(check-random (key-handler (make-world (make-tetra (make-posn 30 370)
+                                                   (list
+                                                    (make-block -1 0 "red")
+                                                    (make-block 0 -1 "red")
+                                                    (make-block 0 0 "red")
+                                                    (make-block 1 -1 "red")))
+                                       (list (make-block 10 390 "orange")
+                                             (make-block 30 390 "orange")
+                                             (make-block 30 370 "orange")
+                                             (make-block 50 390 "orange")) 4)
+                           "down")
+              (make-world (num-tetra (random 7))
+                                       (list (make-block 10 390 "orange")
+                                             (make-block 30 390 "orange")
+                                             (make-block 30 370 "orange")
+                                             (make-block 50 390 "orange")
+                                             (make-block 10 370 "red")
+                                             (make-block 30 350 "red")
+                                             (make-block 30 370 "red")
+                                             (make-block 50 350 "red")) 8))
 (check-expect (rotate-collision (make-world (make-tetra
                                          (make-posn 190 330)
                                          (list (make-block 0 1 "purple")
